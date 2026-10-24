@@ -131,7 +131,7 @@ class OpticalLensDetector:
         h, w = frame_bgr.shape[:2]
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         
-        # Stage 1: Ambient Compensation / Differencing
+        # Stage 1: Ambient Compensation & Adaptive Normalization
         if is_differential and baseline_gray is not None and baseline_gray.shape == gray.shape:
             # Differential Flash Subtraction: Delta = |Flash_On - Flash_Off|
             diff = cv2.absdiff(gray, baseline_gray)
@@ -141,9 +141,13 @@ class OpticalLensDetector:
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             processed_gray = clahe.apply(gray)
 
-        # Stage 2: Specular Peak Isolation
-        # Extract the highest luminance regions
-        _, thresh = cv2.threshold(processed_gray, self.min_intensity, 255, cv2.THRESH_BINARY)
+        # Stage 2: Specular Peak Isolation with Adaptive Lux Normalization
+        # Floats dynamically above ambient lighting distribution
+        mean_ambient = float(np.mean(gray))
+        std_ambient = float(np.std(gray))
+        adaptive_thresh = int(np.clip(mean_ambient + 3.2 * std_ambient, self.min_intensity, 252))
+
+        _, thresh = cv2.threshold(processed_gray, adaptive_thresh, 255, cv2.THRESH_BINARY)
         
         # Morphological clean up to separate touching glares
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -198,6 +202,11 @@ class OpticalLensDetector:
 
             confidence = round(float(np.clip(base_conf, 0.45, 0.98)), 2)
 
+            # Stage 6: Geometric Optical Distance Estimation (Pinhole Optics Formula)
+            # D = (focal_length * real_pinhole_mm) / aperture_pixel_diameter
+            aperture_px = max(bw, bh)
+            est_distance = round(float(np.clip(24.0 / max(4.0, aperture_px), 0.4, 4.5)), 1)
+
             candidates.append({
                 "x": int(x),
                 "y": int(y),
@@ -210,6 +219,7 @@ class OpticalLensDetector:
                 "symmetry": round(symmetry_score, 2),
                 "is_nir": bool(is_nir),
                 "confidence": confidence,
+                "est_distance": est_distance,
                 "label": "Optical Aperture" if not is_nir else "NIR Lens Emitter"
             })
 

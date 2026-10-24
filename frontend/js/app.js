@@ -176,12 +176,20 @@ document.addEventListener('DOMContentLoaded', () => {
       drawTacticalTarget(x, y, w, h, cx, cy, det);
     });
 
-    // Alert Banner & Audio Siren (Only sound for confirmed targets >= 0.82)
+    // Alert Banner, Audio Siren & Mobile Haptic Vibration (Only for confirmed targets >= 0.82)
     const highest = detections.reduce((prev, curr) => (prev.confidence > curr.confidence) ? prev : curr, detections[0]);
     if (highest.confidence >= 0.82) {
-      alertText.textContent = `TARGET: ${highest.label.toUpperCase()} (${Math.round(highest.confidence * 100)}% CONFIDENCE)`;
+      const distInfo = highest.est_distance ? ` | DIST: ~${highest.est_distance}M` : '';
+      alertText.textContent = `TARGET: ${highest.label.toUpperCase()} (${Math.round(highest.confidence * 100)}%)${distInfo}`;
       alertBanner.classList.add('active');
       window.tacticalAudio.playAlert();
+
+      // Mobile Haptic Feedback (Physical Vibration on Phone)
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate([100, 50, 150]);
+        } catch (e) {}
+      }
     } else {
       alertBanner.classList.remove('active');
     }
@@ -192,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawTacticalTarget(x, y, w, h, cx, cy, det) {
-    const isCritical = det.confidence >= 0.85;
+    const isCritical = det.confidence >= 0.82;
     const color = isCritical ? '#ff1e44' : '#ffaa00';
 
     ctx.save();
@@ -229,10 +237,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy + 12);
     ctx.stroke();
 
-    // Label tag
+    // Label tag with Geometric Optical Distance
     ctx.font = 'bold 11px monospace';
     ctx.fillStyle = color;
-    const label = `TARGET: ${det.label} [${Math.round(det.confidence * 100)}%]`;
+    const distText = det.est_distance ? ` | ~${det.est_distance}m` : '';
+    const label = `TARGET: ${det.label} [${Math.round(det.confidence * 100)}%]${distText}`;
     ctx.fillText(label, x, y - 8);
 
     ctx.restore();

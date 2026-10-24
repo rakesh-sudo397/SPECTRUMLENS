@@ -48,6 +48,13 @@ async def serve_index():
             return HTMLResponse(f.read())
     return HTMLResponse("<h2>SpecterLens frontend not found.</h2>", status_code=404)
 
+@app.get("/manifest.json")
+async def serve_manifest():
+    manifest_path = os.path.join(FRONTEND_DIR, "manifest.json")
+    if os.path.exists(manifest_path):
+        return FileResponse(manifest_path, media_type="application/manifest+json")
+    return JSONResponse({})
+
 @app.get("/api/health")
 async def health_check():
     return {

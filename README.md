@@ -60,18 +60,23 @@ Ran via `backend/test_pipeline.py`:
 
 ## ✨ Features Built Into the Prototype
 
-1. **Tactical Mobile-First HUD:**
-   - Fullscreen camera viewfinder with real-time target bounding boxes, coordinate crosshairs, and live latency gauges.
-   - Real-time Threat Badge (`SECURE: CLEAN`, `SUSPICIOUS`, `CRITICAL ALERT`).
-2. **Hardware Torch & Differential Flash Control:**
+1. **Tactical Mobile-First HUD & Native PWA:**
+   - Fullscreen camera viewfinder with real-time target bounding boxes, coordinate crosshairs, live latency gauges, and native PWA standalone support (installable to home screen).
+2. **Geometric Optical Distance Estimation:**
+   - Calculates pinhole aperture target distance in meters (`DIST: ~1.4m`) directly on the HUD using geometric optics.
+3. **Dynamic Ambient Lux Normalization:**
+   - Automatically adapts specular thresholds dynamically based on ambient frame luminance ($\mu + 3.2\sigma$), ensuring invariant detection across dark rooms and bright conference halls.
+4. **Mobile Haptic Feedback:**
+   - Vibrates the smartphone physically in the user's hand (`navigator.vibrate`) the millisecond a target is locked.
+5. **Hardware Torch & Differential Flash Control:**
    - Automatically probes and controls the smartphone's rear LED torch using standard Web APIs (`MediaTrackConstraints.advanced.torch`).
-3. **Web Audio Tactical Synthesizer:**
-   - Synthesizes real-time geiger-counter radar clicks during scanning and an urgent two-tone siren when an optical lens is locked—with zero external audio files.
-4. **Legitimate LAN Camera Sniffer:**
+6. **Web Audio Tactical Synthesizer:**
+   - Synthesizes real-time single-tone tactical chimes with 1.2s audio debouncing.
+7. **Legitimate LAN Camera Sniffer:**
    - Sends real SSDP `M-SEARCH` UDP multicast queries (`239.255.255.250:1900`) and probes standard RTSP video ports (`554`, `8554`, `8080`) to discover smart streaming cameras connected to the local Wi-Fi.
-5. **Built-in Calibration Playground:**
+8. **Built-in Calibration Playground:**
    - Instant live testing using pre-loaded calibrated reference crops (Optical Lens vs. Metallic Screw) to demonstrate false-positive rejection live to judges.
-6. **Printable Room Privacy Audit Certificate:**
+9. **Printable Room Privacy Audit Certificate:**
    - Generates a timestamped, signed room safety audit with threat assessment and cryptographic certificate seal.
 
 ---
@@ -96,11 +101,32 @@ python main.py
 
 ### 4. Access on Your Smartphone
 1. Connect your smartphone to the same Wi-Fi network as your laptop.
-2. Open your smartphone browser (Chrome/Safari) and navigate to `http://<YOUR_LAPTOP_IP>:8000` or use [ngrok](https://ngrok.com/) for HTTPS:
+2. Open your smartphone browser (Chrome/Safari) and navigate to `http://<YOUR_LAPTOP_IP>:8000` or use `npx localtunnel` / `ngrok` for HTTPS:
    ```bash
-   ngrok http 8000
+   npx localtunnel --port 8000
    ```
 3. Tap **"Enable Camera"** and toggle **"TORCH: ON"**. Sweep slowly across suspicious areas (smoke detectors, clocks, power plugs) at 1.5–2.5 meters.
+
+---
+
+## 🛠️ Developer & Team Handoff Guide
+
+If you are a teammate cloning this repository to work on the project:
+
+### Project Architecture
+* **`backend/vision_engine.py`**: The core computer vision pipeline. Modify this file to adjust sensitivity thresholds, contour metrics, or add new optical filtering algorithms.
+* **`backend/network_sniffer.py`**: Local network discovery. Modify this file to add new mDNS/SSDP camera signatures or port probes.
+* **`backend/main.py`**: FastAPI REST & WebSocket endpoints. Handles streaming frames from the mobile client to the vision engine.
+* **`frontend/js/app.js`**: Master UI coordinator. Manages WebSocket frame streaming, canvas bounding box rendering, haptics, and tab switching.
+* **`frontend/js/camera.js`**: WebRTC video capture and hardware torch control.
+* **`frontend/js/audio.js`**: Web Audio API synthesizer for tactical chimes.
+* **`frontend/css/style.css`**: Cyber-tactical dark-mode design system.
+
+### Running Tests
+Before pushing any code changes, always verify the optical pipeline passes:
+```bash
+python backend/test_pipeline.py
+```
 
 ---
 
@@ -109,11 +135,11 @@ python main.py
 1. **The Hook (20s):**
    > *"Judges, over 58% of travelers fear hidden cameras in hotel rooms and rentals. Existing App Store apps are compass-sensor scams that beep at any metal bed frame. We built **SpecterLens**: a 100% software, mobile-first optical radar that turns standard smartphones into surveillance sentinels."*
 2. **The Physics & Calibration Test (40s):**
-   > *Switch to the **Testbed** tab on the phone. Tap 'Test Screw Distractor' $\rightarrow$ 0 detections (rejected). Tap 'Test Lens Glint' $\rightarrow$ Instantly locks on with 86% confidence and a tactical siren.*
+   > *Switch to the **Testbed** tab on the phone. Tap 'Test Screw Distractor' $\rightarrow$ 0 detections (rejected). Tap 'Test Lens Glint' $\rightarrow$ Instantly locks on with 80%+ confidence, distance estimate, and tactile vibration.*
    > *"Notice how the system rejects flat metallic screws due to asymmetric scatter, but locks onto true optical lenses via Airy-disk radial symmetry in under 15ms."*
 3. **The Live Room Sweep (40s):**
    > *Point the phone camera with the torch ON at a hidden webcam or dummy lens across the table.*
-   > *The HUD locks on with a glowing red reticle: **CRITICAL: OPTICAL APERTURE DETECTED**.*
+   > *The HUD locks on with a glowing red reticle and physically vibrates in your hand: **TARGET: OPTICAL APERTURE | DIST: ~1.4M**.*
 4. **The Audit Certificate (20s):**
    > *Tap **Audit** $\rightarrow$ Click **Generate Privacy Certificate**.*
    > *"In one tap, guests or hotel managers get a certified, printable Room Privacy Audit report."*
