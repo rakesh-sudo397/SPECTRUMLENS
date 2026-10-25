@@ -179,8 +179,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Alert Banner, Audio Siren & Mobile Haptic Vibration (Triggers on target >= 0.68)
     const highest = detections.reduce((prev, curr) => (prev.confidence > curr.confidence) ? prev : curr, detections[0]);
     if (highest.confidence >= 0.68) {
-      const distInfo = highest.est_distance ? ` | DIST: ~${highest.est_distance}M` : '';
-      alertText.textContent = `TARGET: ${highest.label.toUpperCase()} (${Math.round(highest.confidence * 100)}%)${distInfo}`;
+      const distInfo = highest.est_distance ? ` [~${highest.est_distance}M]` : '';
+      alertText.textContent = `TARGET: ${highest.label.toUpperCase()}${distInfo}`;
+
+      const pctNumElem = document.getElementById('alertPctValue');
+      if (pctNumElem) {
+        pctNumElem.textContent = `${Math.round(highest.confidence * 100)}%`;
+      }
+
       alertBanner.classList.add('active');
       window.tacticalAudio.playAlert();
 
