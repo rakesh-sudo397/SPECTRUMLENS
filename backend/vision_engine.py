@@ -27,45 +27,44 @@ class OpticalLensDetector:
     def set_sensitivity(self, level: str):
         level = level.lower()
         if level == "high":
-            self.min_intensity = 225
-            self.min_circularity = 0.70
-            self.min_area = 5
-            self.max_area = 3000
-            self.radial_symmetry_threshold = 0.38
-            self.min_gradient_drop = 25.0
+            self.min_intensity = 185
+            self.min_circularity = 0.58
+            self.min_area = 4
+            self.max_area = 4000
+            self.radial_symmetry_threshold = 0.28
+            self.min_gradient_drop = 12.0
+            self.min_center_val = 180
             self.confirmation_frames = 1
         elif level == "ultra":
-            self.min_intensity = 210
-            self.min_circularity = 0.65
-            self.min_area = 4
-            self.max_area = 4500
-            self.radial_symmetry_threshold = 0.35
-            self.min_gradient_drop = 20.0
+            self.min_intensity = 170
+            self.min_circularity = 0.52
+            self.min_area = 3
+            self.max_area = 6000
+            self.radial_symmetry_threshold = 0.22
+            self.min_gradient_drop = 8.0
+            self.min_center_val = 165
             self.confirmation_frames = 1
-        else:  # normal / balanced (optimized against screen glare)
-            self.min_intensity = 232
-            self.min_circularity = 0.74
-            self.min_area = 6
-            self.max_area = 2500
-            self.radial_symmetry_threshold = 0.45
-            self.min_gradient_drop = 35.0
-            self.confirmation_frames = 2
+        else:  # normal / balanced
+            self.min_intensity = 200
+            self.min_circularity = 0.65
+            self.min_area = 5
+            self.max_area = 3500
+            self.radial_symmetry_threshold = 0.32
+            self.min_gradient_drop = 16.0
+            self.min_center_val = 195
+            self.confirmation_frames = 1
 
     def compute_radial_symmetry(self, gray: np.ndarray, cx: int, cy: int, radius: int) -> float:
         """
         Computes the radial intensity gradient symmetry around the candidate centroid.
-        Curved optical lenses produce isotropic radial decay (Airy pattern), whereas
-        screws and flat metallic surfaces scatter light anisotropically (irregular directions).
-        
-        Returns a score between 0.0 (asymmetric/irregular) and 1.0 (highly symmetric lens).
         """
         h, w = gray.shape
-        r = max(4, min(radius, 22))
+        r = max(3, min(radius, 22))
         
         center_val = float(gray[cy, cx])
-        # A true optical flash retroreflection saturates the sensor core
-        if center_val < 235:
-            return 0.0  # Screen icons / flat graphics lack hyper-concentrated specular core
+        min_center = getattr(self, "min_center_val", 190)
+        if center_val < min_center:
+            return 0.0  # Insufficient specular highlight
 
         # Sample intensity profiles along 8 radial spokes
         angles = [0, 45, 90, 135, 180, 225, 270, 315]
@@ -85,8 +84,8 @@ class OpticalLensDetector:
                 spoke_falloffs.append(0.0)
 
         mean_drop = np.mean(spoke_falloffs)
-        # Must have steep gradient falloff (flat screen icons have almost 0 drop across radius)
-        if not spoke_falloffs or mean_drop < self.min_gradient_drop:
+        min_drop = getattr(self, "min_gradient_drop", 14.0)
+        if not spoke_falloffs or mean_drop < min_drop:
             return 0.0
 
         mean_drop = np.mean(spoke_falloffs)
@@ -142,10 +141,10 @@ class OpticalLensDetector:
             processed_gray = clahe.apply(gray)
 
         # Stage 2: Specular Peak Isolation with Adaptive Lux Normalization
-        # Floats dynamically above ambient lighting distribution
+        # Clamped to stay responsive even under bright ceiling lights
         mean_ambient = float(np.mean(gray))
         std_ambient = float(np.std(gray))
-        adaptive_thresh = int(np.clip(mean_ambient + 3.2 * std_ambient, self.min_intensity, 252))
+        adaptive_thresh = int(np.clip(mean_ambient + 1.8 * std_ambient, self.min_intensity, 230))
 
         _, thresh = cv2.threshold(processed_gray, adaptive_thresh, 255, cv2.THRESH_BINARY)
         

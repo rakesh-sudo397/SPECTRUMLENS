@@ -133,10 +133,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleDetectionResults(data) {
     fpsBadge.textContent = `${data.latency_ms} MS`;
 
-    // Filter out low-confidence screen artifacts (< 0.76)
+    // Responsive detection filter for all lighting conditions
     const rawDetections = data.detections || [];
-    const detections = rawDetections.filter(d => d.confidence >= 0.76);
-    currentThreat = detections.length > 0 ? (detections.some(d => d.confidence >= 0.82) ? 'CRITICAL' : 'SUSPICIOUS') : 'CLEAN';
+    const detections = rawDetections.filter(d => d.confidence >= 0.60);
+    currentThreat = detections.length > 0 ? (detections.some(d => d.confidence >= 0.70) ? 'CRITICAL' : 'SUSPICIOUS') : 'CLEAN';
 
     updateThreatStatus(currentThreat, detections.length);
 
@@ -176,9 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
       drawTacticalTarget(x, y, w, h, cx, cy, det);
     });
 
-    // Alert Banner, Audio Siren & Mobile Haptic Vibration (Only for confirmed targets >= 0.82)
+    // Alert Banner, Audio Siren & Mobile Haptic Vibration (Triggers on target >= 0.68)
     const highest = detections.reduce((prev, curr) => (prev.confidence > curr.confidence) ? prev : curr, detections[0]);
-    if (highest.confidence >= 0.82) {
+    if (highest.confidence >= 0.68) {
       const distInfo = highest.est_distance ? ` | DIST: ~${highest.est_distance}M` : '';
       alertText.textContent = `TARGET: ${highest.label.toUpperCase()} (${Math.round(highest.confidence * 100)}%)${distInfo}`;
       alertBanner.classList.add('active');
